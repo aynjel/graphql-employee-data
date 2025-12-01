@@ -28,8 +28,10 @@ const server = new ApolloServer<GraphQLContext>({
 	resolvers: resolvers as any,
 });
 
+const PORT = process.env.PORT || 4000;
+
 const { url } = await startStandaloneServer(server, {
-	listen: { port: 4000 },
+	listen: { port: Number(PORT) },
 	context: context as ContextFunction<[StandaloneServerContextFunctionArgument], GraphQLContext>,
 });
 
