@@ -96,3 +96,6 @@ export interface GraphQLRequest {
 		[key: string]: string | undefined;
 	};
 }
+
+// Vercel-specific types
+export interface VercelRequest extends Request {}

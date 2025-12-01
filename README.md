@@ -13,6 +13,7 @@ sorting, and performance optimizations.
 - ✅ **Authentication**: JWT-based authentication
 - ✅ **Role-Based Authorization**: Admin and Employee roles with different permissions
 - ✅ **Performance Optimizations**: DataLoader for batching and caching
+- ✅ **Vercel Ready**: Deployable to Vercel serverless functions
 
 ## Installation
 
@@ -253,7 +254,10 @@ mutation {
 ```
 graphql-employee-data/
 ├── server.ts                 # Main server file (TypeScript)
+├── api/
+│   └── graphql.ts           # Vercel serverless function
 ├── tsconfig.json             # TypeScript configuration
+├── vercel.json               # Vercel configuration
 ├── schema/
 │   ├── typeDefs.ts          # GraphQL schema definitions
 │   └── resolvers.ts         # GraphQL resolvers
@@ -286,10 +290,61 @@ export JWT_SECRET=your-production-secret-key
 
 ## Example Usage
 
+### Local Development
+
 1. **Start the server**: `npm start`
 2. **Open GraphQL Playground**: Navigate to `http://localhost:4000`
 3. **Login** to get a token
 4. **Set Authorization header** in the playground (bottom left)
 5. **Run queries and mutations** as needed
+
+### Vercel Deployment
+
+1. **Install Vercel CLI** (if not already installed):
+
+   ```bash
+   npm i -g vercel
+   ```
+
+2. **Deploy to Vercel**:
+
+   ```bash
+   vercel
+   ```
+
+3. **Access your API**: Your GraphQL endpoint will be at:
+
+   ```
+   https://your-project.vercel.app/api/graphql
+   ```
+
+4. **Query via URL** (GET request with query parameters):
+
+   ```
+   https://your-project.vercel.app/api/graphql?query={login(username:"admin",password:"admin123"){token user{id username role}}}
+   ```
+
+   Or with variables:
+
+   ```
+   https://your-project.vercel.app/api/graphql?query={listEmployees{id name age}}&variables={}
+   ```
+
+5. **Query via POST** (with Authorization header):
+
+   ```bash
+   curl -X POST https://your-project.vercel.app/api/graphql \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer YOUR_TOKEN" \
+     -d '{"query":"{ listEmployees { id name age } }"}'
+   ```
+
+6. **Using GraphQL Playground**: Visit `https://your-project.vercel.app/api/graphql` in your browser to access
+   the interactive GraphQL Playground
+
+7. **Set Environment Variables in Vercel**:
+   - Go to your Vercel project settings
+   - Add `JWT_SECRET` environment variable
+   - Redeploy your application
 
 See `examples/queries.graphql` for more examples.

@@ -1,0 +1,7 @@
+{
+	"functions": {
+		"api/graphql.ts": {
+			"runtime": "nodejs20.x"
+		}
+	}
+}
