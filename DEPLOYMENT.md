@@ -157,17 +157,13 @@ This file tells Vercel how to build and deploy your project:
 
 ```json
 {
-	"version": 2,
 	"buildCommand": "npm run build",
-	"outputDirectory": "public",
-	"installCommand": "npm install",
-	"functions": {
-		"api/graphql.ts": {
-			"runtime": "nodejs20.x"
-		}
-	}
+	"installCommand": "npm install"
 }
 ```
+
+**Note:** Vercel automatically detects and compiles TypeScript files in the `api/` directory, so we don't need
+to specify the runtime manually.
 
 ### `package.json` Build Script
 
