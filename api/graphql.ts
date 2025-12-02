@@ -138,8 +138,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 					{ contextValue: context }
 				);
 
+				// Extract and return only the GraphQL response data (without wrapper)
+				let response: { data: any; errors?: readonly any[] } = { data: null };
+
+				if (result.body && typeof result.body === 'object' && 'kind' in result.body) {
+					if (result.body.kind === 'single') {
+						response = {
+							data: result.body.singleResult?.data || null,
+							errors: result.body.singleResult?.errors,
+						};
+					}
+				} else if ('data' in result) {
+					// Result has data directly
+					response = {
+						data: (result as any).data || null,
+						errors: (result as any).errors,
+					};
+				}
+
 				res.setHeader('Content-Type', 'application/json');
-				res.status(200).json(result);
+				res.status(200).json(response);
 				return;
 			}
 
@@ -208,8 +226,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 				{ contextValue: context }
 			);
 
+			// Extract and return only the GraphQL response data (without wrapper)
+			let response: { data: any; errors?: readonly any[] } = { data: null };
+
+			if (result.body && typeof result.body === 'object' && 'kind' in result.body) {
+				if (result.body.kind === 'single') {
+					response = {
+						data: result.body.singleResult?.data || null,
+						errors: result.body.singleResult?.errors,
+					};
+				}
+			} else if ('data' in result) {
+				// Result has data directly
+				response = {
+					data: (result as any).data || null,
+					errors: (result as any).errors,
+				};
+			}
+
 			res.setHeader('Content-Type', 'application/json');
-			res.status(200).json(result);
+			res.status(200).json(response);
 			return;
 		}
 
