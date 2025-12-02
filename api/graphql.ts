@@ -53,9 +53,14 @@ export default async function handler(req: Request): Promise<Response> {
 	try {
 		const apolloServer = await getServer();
 
+		// Construct full URL from request (Vercel provides relative URLs)
+		const urlString = req.url.startsWith('http')
+			? req.url
+			: `https://${req.headers.get('host') || 'localhost'}${req.url}`;
+		const url = new URL(urlString);
+
 		// Handle GET requests (for GraphQL Playground and URL queries)
 		if (req.method === 'GET') {
-			const url = new URL(req.url);
 			const query = url.searchParams.get('query');
 			const variables = url.searchParams.get('variables');
 			const operationName = url.searchParams.get('operationName');
@@ -96,7 +101,7 @@ export default async function handler(req: Request): Promise<Response> {
 						<script>
 							window.addEventListener('load', function (event) {
 								GraphQLPlayground.init(document.getElementById('root'), {
-									endpoint: '${req.url}',
+									endpoint: '${urlString}',
 									settings: {
 										'request.credentials': 'same-origin'
 									}
@@ -114,11 +119,28 @@ export default async function handler(req: Request): Promise<Response> {
 
 		// Handle POST requests (standard GraphQL requests)
 		if (req.method === 'POST') {
-			const body = (await req.json()) as {
+			// Parse request body - handle both Web API Request and Vercel format
+			let body: {
 				query: string;
 				variables?: Record<string, any>;
 				operationName?: string;
 			};
+
+			if (typeof req.json === 'function') {
+				body = (await req.json()) as {
+					query: string;
+					variables?: Record<string, any>;
+					operationName?: string;
+				};
+			} else {
+				// Fallback: read body as text and parse JSON
+				const text = await req.text();
+				body = JSON.parse(text || '{}') as {
+					query: string;
+					variables?: Record<string, any>;
+					operationName?: string;
+				};
+			}
 			const context = await createContext(req);
 
 			const result = await apolloServer.executeOperation(
