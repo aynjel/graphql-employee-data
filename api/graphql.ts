@@ -5,9 +5,23 @@ import { typeDefs } from '../schema/typeDefs.js';
 import type { GraphQLContext } from '../types/index.js';
 import { authUtils } from '../utils/auth.js';
 
+// Helper to get headers from request (handles both Web API and Vercel formats)
+const getHeader = (req: any, name: string): string | null => {
+	// Try Web API Headers format first
+	if (req.headers && typeof req.headers.get === 'function') {
+		return req.headers.get(name);
+	}
+	// Fallback to plain object format (Vercel)
+	if (req.headers && typeof req.headers === 'object') {
+		const header = req.headers[name] || req.headers[name.toLowerCase()];
+		return header || null;
+	}
+	return null;
+};
+
 // Create context function for Vercel
-const createContext = async (req: Request): Promise<GraphQLContext> => {
-	const authHeader = req.headers.get('authorization');
+const createContext = async (req: any): Promise<GraphQLContext> => {
+	const authHeader = getHeader(req, 'authorization');
 	let user = null;
 
 	if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -49,14 +63,15 @@ async function getServer(): Promise<ApolloServer<GraphQLContext>> {
 }
 
 // Vercel serverless function handler
-export default async function handler(req: Request): Promise<Response> {
+export default async function handler(req: any): Promise<Response> {
 	try {
 		const apolloServer = await getServer();
 
+		// Get host from headers (handle both formats)
+		const host = getHeader(req, 'host') || req.headers?.host || 'localhost';
+
 		// Construct full URL from request (Vercel provides relative URLs)
-		const urlString = req.url.startsWith('http')
-			? req.url
-			: `https://${req.headers.get('host') || 'localhost'}${req.url}`;
+		const urlString = req.url?.startsWith('http') ? req.url : `https://${host}${req.url || '/api/graphql'}`;
 		const url = new URL(urlString);
 
 		// Handle GET requests (for GraphQL Playground and URL queries)
@@ -127,12 +142,13 @@ export default async function handler(req: Request): Promise<Response> {
 			};
 
 			if (typeof req.json === 'function') {
+				// Web API Request format
 				body = (await req.json()) as {
 					query: string;
 					variables?: Record<string, any>;
 					operationName?: string;
 				};
-			} else {
+			} else if (typeof req.text === 'function') {
 				// Fallback: read body as text and parse JSON
 				const text = await req.text();
 				body = JSON.parse(text || '{}') as {
@@ -140,6 +156,15 @@ export default async function handler(req: Request): Promise<Response> {
 					variables?: Record<string, any>;
 					operationName?: string;
 				};
+			} else if (req.body) {
+				// Vercel format: body is already parsed or available
+				if (typeof req.body === 'string') {
+					body = JSON.parse(req.body);
+				} else {
+					body = req.body;
+				}
+			} else {
+				throw new Error('Unable to parse request body');
 			}
 			const context = await createContext(req);
 
