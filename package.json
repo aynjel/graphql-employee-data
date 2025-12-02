@@ -2,10 +2,10 @@
 	"name": "graphql-employee-data",
 	"version": "1.0.0",
 	"description": "",
-	"main": "dist/server.js",
+	"main": "public/server.js",
 	"scripts": {
 		"build": "tsc",
-		"start": "node dist/server.js",
+		"start": "node public/server.js",
 		"dev": "nodemon",
 		"dev:tsx": "tsx watch server.ts"
 	},
