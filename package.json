@@ -1,6 +1,18 @@
 {
-  "dependencies": {
-    "@graphql-tools/schema": "10.0.30",
-    "graphql": "16.12.0"
-  }
+	"type": "module",
+	"scripts": {
+		"dev": "node server.js",
+		"start": "node server.js",
+		"vercel": "vercel dev"
+	},
+	"dependencies": {
+		"@graphql-tools/schema": "10.0.30",
+		"graphql": "16.12.0",
+		"bcryptjs": "^2.4.3",
+		"jsonwebtoken": "^9.0.2",
+		"dataloader": "^2.2.0"
+	},
+	"devDependencies": {
+		"vercel": "^34.0.0"
+	}
 }
