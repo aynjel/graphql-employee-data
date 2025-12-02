@@ -217,8 +217,6 @@ let employees: Employee[] = [
 	}),
 ];
 
-let nextEmployeeId = 4;
-
 const users: UserModel[] = [
 	new UserModel({
 		id: '1',
@@ -264,7 +262,7 @@ export const employeeStore = {
 
 	add(employeeData: EmployeeInput): Employee {
 		const newEmployee = new Employee({
-			id: String(nextEmployeeId++),
+			id: crypto.randomUUID(),
 			...employeeData,
 		});
 		employees.push(newEmployee);
