@@ -27,8 +27,9 @@ const createContext = async (req: Request): Promise<GraphQLContext> => {
 
 // Create Apollo Server instance (singleton pattern for serverless)
 let server: ApolloServer<GraphQLContext> | null = null;
+let serverStartPromise: Promise<void> | null = null;
 
-function getServer(): ApolloServer<GraphQLContext> {
+async function getServer(): Promise<ApolloServer<GraphQLContext>> {
 	if (!server) {
 		server = new ApolloServer<GraphQLContext>({
 			typeDefs,
@@ -36,41 +37,49 @@ function getServer(): ApolloServer<GraphQLContext> {
 			introspection: true,
 			plugins: [ApolloServerPluginLandingPageLocalDefault({ embed: true })],
 		});
+		// Start the server (only once)
+		serverStartPromise = server.start();
+	}
+	// Wait for server to start if it's starting
+	if (serverStartPromise) {
+		await serverStartPromise;
+		serverStartPromise = null; // Clear after first start
 	}
 	return server;
 }
 
 // Vercel serverless function handler
 export default async function handler(req: Request): Promise<Response> {
-	const apolloServer = getServer();
+	try {
+		const apolloServer = await getServer();
 
-	// Handle GET requests (for GraphQL Playground and URL queries)
-	if (req.method === 'GET') {
-		const url = new URL(req.url);
-		const query = url.searchParams.get('query');
-		const variables = url.searchParams.get('variables');
-		const operationName = url.searchParams.get('operationName');
+		// Handle GET requests (for GraphQL Playground and URL queries)
+		if (req.method === 'GET') {
+			const url = new URL(req.url);
+			const query = url.searchParams.get('query');
+			const variables = url.searchParams.get('variables');
+			const operationName = url.searchParams.get('operationName');
 
-		if (query) {
-			// Execute GraphQL query from URL parameters
-			const context = await createContext(req);
-			const result = await apolloServer.executeOperation(
-				{
-					query,
-					variables: variables ? JSON.parse(variables) : undefined,
-					operationName: operationName || undefined,
-				},
-				{ contextValue: context }
-			);
+			if (query) {
+				// Execute GraphQL query from URL parameters
+				const context = await createContext(req);
+				const result = await apolloServer.executeOperation(
+					{
+						query,
+						variables: variables ? JSON.parse(variables) : undefined,
+						operationName: operationName || undefined,
+					},
+					{ contextValue: context }
+				);
 
-			return new Response(JSON.stringify(result), {
-				headers: { 'Content-Type': 'application/json' },
-			});
-		}
+				return new Response(JSON.stringify(result), {
+					headers: { 'Content-Type': 'application/json' },
+				});
+			}
 
-		// Return GraphQL Playground HTML
-		return new Response(
-			`<!DOCTYPE html>
+			// Return GraphQL Playground HTML
+			return new Response(
+				`<!DOCTYPE html>
 			<html>
 				<head>
 					<title>GraphQL Playground</title>
@@ -97,35 +106,48 @@ export default async function handler(req: Request): Promise<Response> {
 					</div>
 				</body>
 			</html>`,
+				{
+					headers: { 'Content-Type': 'text/html' },
+				}
+			);
+		}
+
+		// Handle POST requests (standard GraphQL requests)
+		if (req.method === 'POST') {
+			const body = (await req.json()) as {
+				query: string;
+				variables?: Record<string, any>;
+				operationName?: string;
+			};
+			const context = await createContext(req);
+
+			const result = await apolloServer.executeOperation(
+				{
+					query: body.query,
+					variables: body.variables,
+					operationName: body.operationName,
+				},
+				{ contextValue: context }
+			);
+
+			return new Response(JSON.stringify(result), {
+				headers: { 'Content-Type': 'application/json' },
+			});
+		}
+
+		// Method not allowed
+		return new Response('Method not allowed', { status: 405 });
+	} catch (error) {
+		console.error('GraphQL handler error:', error);
+		return new Response(
+			JSON.stringify({
+				error: 'Internal server error',
+				message: error instanceof Error ? error.message : 'Unknown error',
+			}),
 			{
-				headers: { 'Content-Type': 'text/html' },
+				status: 500,
+				headers: { 'Content-Type': 'application/json' },
 			}
 		);
 	}
-
-	// Handle POST requests (standard GraphQL requests)
-	if (req.method === 'POST') {
-		const body = (await req.json()) as {
-			query: string;
-			variables?: Record<string, any>;
-			operationName?: string;
-		};
-		const context = await createContext(req);
-
-		const result = await apolloServer.executeOperation(
-			{
-				query: body.query,
-				variables: body.variables,
-				operationName: body.operationName,
-			},
-			{ contextValue: context }
-		);
-
-		return new Response(JSON.stringify(result), {
-			headers: { 'Content-Type': 'application/json' },
-		});
-	}
-
-	// Method not allowed
-	return new Response('Method not allowed', { status: 405 });
 }
