@@ -5,22 +5,30 @@ import { typeDefs } from '../schema/typeDefs.js';
 import type { GraphQLContext } from '../types/index.js';
 import { authUtils } from '../utils/auth.js';
 
-// Helper to get headers from request (handles both Web API and Vercel formats)
-const getHeader = (req: any, name: string): string | null => {
-	// Try Web API Headers format first
-	if (req.headers && typeof req.headers.get === 'function') {
-		return req.headers.get(name);
-	}
-	// Fallback to plain object format (Vercel)
-	if (req.headers && typeof req.headers === 'object') {
-		const header = req.headers[name] || req.headers[name.toLowerCase()];
-		return header || null;
-	}
-	return null;
+// Vercel request/response types
+type VercelRequest = {
+	method?: string;
+	url?: string;
+	headers: Record<string, string | string[] | undefined>;
+	body?: any;
+	query?: Record<string, string | string[]>;
+};
+
+type VercelResponse = {
+	setHeader: (name: string, value: string) => void;
+	status: (code: number) => VercelResponse;
+	json: (data: any) => void;
+	send: (data: string) => void;
+};
+
+// Helper to get headers from request
+const getHeader = (req: VercelRequest, name: string): string | null => {
+	const header = req.headers[name] || req.headers[name.toLowerCase()];
+	return header ? (Array.isArray(header) ? header[0] : header) : null;
 };
 
 // Create context function for Vercel
-const createContext = async (req: any): Promise<GraphQLContext> => {
+const createContext = async (req: VercelRequest): Promise<GraphQLContext> => {
 	const authHeader = getHeader(req, 'authorization');
 	let user = null;
 
@@ -63,15 +71,18 @@ async function getServer(): Promise<ApolloServer<GraphQLContext>> {
 }
 
 // Vercel serverless function handler
-export default async function handler(req: any): Promise<Response> {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
 	try {
 		const apolloServer = await getServer();
 
-		// Get host from headers (handle both formats)
-		const host = getHeader(req, 'host') || req.headers?.host || 'localhost';
+		// Get host from headers
+		const host = getHeader(req, 'host') || req.headers.host || 'localhost';
+		const protocol = req.headers['x-forwarded-proto'] || 'https';
 
-		// Construct full URL from request (Vercel provides relative URLs)
-		const urlString = req.url?.startsWith('http') ? req.url : `https://${host}${req.url || '/api/graphql'}`;
+		// Construct full URL from request
+		const urlString = req.url?.startsWith('http')
+			? req.url
+			: `${protocol}://${host}${req.url || '/api/graphql'}`;
 		const url = new URL(urlString);
 
 		// Handle GET requests (for GraphQL Playground and URL queries)
@@ -92,80 +103,65 @@ export default async function handler(req: any): Promise<Response> {
 					{ contextValue: context }
 				);
 
-				return new Response(JSON.stringify(result), {
-					headers: { 'Content-Type': 'application/json' },
-				});
+				res.setHeader('Content-Type', 'application/json');
+				res.status(200).json(result);
+				return;
 			}
 
 			// Return GraphQL Playground HTML
-			return new Response(
-				`<!DOCTYPE html>
-			<html>
-				<head>
-					<title>GraphQL Playground</title>
-					<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/graphql-playground-react/build/static/css/index.css" />
-					<link rel="shortcut icon" href="https://cdn.jsdelivr.net/npm/graphql-playground-react/build/favicon.png" />
-					<script src="https://cdn.jsdelivr.net/npm/graphql-playground-react/build/static/js/middleware.js"></script>
-				</head>
-				<body>
-					<div id="root">
-						<style>
-							body { margin: 0; padding: 0; font-family: Open Sans, sans-serif; overflow: hidden; }
-							#root { height: 100vh; }
-						</style>
-						<script>
-							window.addEventListener('load', function (event) {
-								GraphQLPlayground.init(document.getElementById('root'), {
-									endpoint: '${urlString}',
-									settings: {
-										'request.credentials': 'same-origin'
-									}
-								})
-							});
-						</script>
-					</div>
-				</body>
-			</html>`,
-				{
-					headers: { 'Content-Type': 'text/html' },
-				}
-			);
+			res.setHeader('Content-Type', 'text/html');
+			res.status(200).send(`
+				<!DOCTYPE html>
+				<html>
+					<head>
+						<title>GraphQL Playground</title>
+						<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/graphql-playground-react/build/static/css/index.css" />
+						<link rel="shortcut icon" href="https://cdn.jsdelivr.net/npm/graphql-playground-react/build/favicon.png" />
+						<script src="https://cdn.jsdelivr.net/npm/graphql-playground-react/build/static/js/middleware.js"></script>
+					</head>
+					<body>
+						<div id="root">
+							<style>
+								body { margin: 0; padding: 0; font-family: Open Sans, sans-serif; overflow: hidden; }
+								#root { height: 100vh; }
+							</style>
+							<script>
+								window.addEventListener('load', function (event) {
+									GraphQLPlayground.init(document.getElementById('root'), {
+										endpoint: '${urlString}',
+										settings: {
+											'request.credentials': 'same-origin'
+										}
+									})
+								});
+							</script>
+						</div>
+					</body>
+				</html>
+			`);
+			return;
 		}
 
 		// Handle POST requests (standard GraphQL requests)
 		if (req.method === 'POST') {
-			// Parse request body - handle both Web API Request and Vercel format
+			// Parse request body - Vercel automatically parses JSON bodies
 			let body: {
 				query: string;
 				variables?: Record<string, any>;
 				operationName?: string;
 			};
 
-			if (typeof req.json === 'function') {
-				// Web API Request format
-				body = (await req.json()) as {
-					query: string;
-					variables?: Record<string, any>;
-					operationName?: string;
-				};
-			} else if (typeof req.text === 'function') {
-				// Fallback: read body as text and parse JSON
-				const text = await req.text();
-				body = JSON.parse(text || '{}') as {
-					query: string;
-					variables?: Record<string, any>;
-					operationName?: string;
-				};
-			} else if (req.body) {
-				// Vercel format: body is already parsed or available
+			if (req.body) {
 				if (typeof req.body === 'string') {
 					body = JSON.parse(req.body);
 				} else {
-					body = req.body;
+					body = req.body as any;
 				}
 			} else {
-				throw new Error('Unable to parse request body');
+				res.status(400).json({ error: 'Request body is required' });
+				return;
 			}
+
 			const context = await createContext(req);
 
 			const result = await apolloServer.executeOperation(
@@ -177,24 +173,18 @@ export default async function handler(req: any): Promise<Response> {
 				{ contextValue: context }
 			);
 
-			return new Response(JSON.stringify(result), {
-				headers: { 'Content-Type': 'application/json' },
-			});
+			res.setHeader('Content-Type', 'application/json');
+			res.status(200).json(result);
+			return;
 		}
 
 		// Method not allowed
-		return new Response('Method not allowed', { status: 405 });
+		res.status(405).json({ error: 'Method not allowed' });
 	} catch (error) {
 		console.error('GraphQL handler error:', error);
-		return new Response(
-			JSON.stringify({
-				error: 'Internal server error',
-				message: error instanceof Error ? error.message : 'Unknown error',
-			}),
-			{
-				status: 500,
-				headers: { 'Content-Type': 'application/json' },
-			}
-		);
+		res.status(500).json({
+			error: 'Internal server error',
+			message: error instanceof Error ? error.message : 'Unknown error',
+		});
 	}
 }
