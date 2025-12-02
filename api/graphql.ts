@@ -70,8 +70,43 @@ async function getServer(): Promise<ApolloServer<GraphQLContext>> {
 	return server;
 }
 
+// CORS configuration
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || ['*'];
+const ALLOWED_METHODS = ['GET', 'POST', 'OPTIONS'];
+const ALLOWED_HEADERS = ['Content-Type', 'Authorization'];
+
+// Helper function to set CORS headers
+const setCORSHeaders = (req: VercelRequest, res: VercelResponse) => {
+	const origin = getHeader(req, 'origin');
+
+	// Determine allowed origin
+	let allowedOrigin = '*';
+	if (origin && ALLOWED_ORIGINS.includes('*')) {
+		allowedOrigin = '*';
+	} else if (origin && ALLOWED_ORIGINS.includes(origin)) {
+		allowedOrigin = origin;
+	} else if (ALLOWED_ORIGINS.length === 1 && ALLOWED_ORIGINS[0] !== '*') {
+		allowedOrigin = ALLOWED_ORIGINS[0];
+	}
+
+	res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+	res.setHeader('Access-Control-Allow-Methods', ALLOWED_METHODS.join(', '));
+	res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS.join(', '));
+	res.setHeader('Access-Control-Allow-Credentials', 'true');
+	res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+};
+
 // Vercel serverless function handler
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+	// Set CORS headers for all requests
+	setCORSHeaders(req, res);
+
+	// Handle OPTIONS request (CORS preflight)
+	if (req.method === 'OPTIONS') {
+		res.status(200).json({});
+		return;
+	}
+
 	try {
 		const apolloServer = await getServer();
 
