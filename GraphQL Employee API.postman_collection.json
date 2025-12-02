@@ -1,0 +1,289 @@
+{
+	"info": {
+		"_postman_id": "80754a4b-ba74-4f7f-8bc3-c4e54ae63e17",
+		"name": "GraphQL Employee API",
+		"description": "# 🚀 Get started here\n\nThis template guides you through CRUD operations (GET, POST, PUT, DELETE), variables, and tests.\n\n## 🔖 **How to use this template**\n\n#### **Step 1: Send requests**\n\nRESTful APIs allow you to perform CRUD operations using the POST, GET, PUT, and DELETE HTTP methods.\n\nThis collection contains each of these [request](https://learning.postman.com/docs/sending-requests/requests/) types. Open each request and click \"Send\" to see what happens.\n\n#### **Step 2: View responses**\n\nObserve the response tab for status code (200 OK), response time, and size.\n\n#### **Step 3: Send new Body data**\n\nUpdate or add new data in \"Body\" in the POST request. Typically, Body data is also used in PUT request.\n\n```\n{\n    \"name\": \"Add your name in the body\"\n}\n\n ```\n\n#### **Step 4: Update the variable**\n\nVariables enable you to store and reuse values in Postman. We have created a [variable](https://learning.postman.com/docs/sending-requests/variables/) called `base_url` with the sample request [https://postman-api-learner.glitch.me](https://postman-api-learner.glitch.me). Replace it with your API endpoint to customize this collection.\n\n#### **Step 5: Add tests in the \"Scripts\" tab**\n\nAdding tests to your requests can help you confirm that your API is working as expected. You can write test scripts in JavaScript and view the output in the \"Test Results\" tab.\n\n<img src=\"https://content.pstmn.io/fa30ea0a-373d-4545-a668-e7b283cca343/aW1hZ2UucG5n\" alt=\"\" height=\"1530\" width=\"2162\">\n\n## 💪 Pro tips\n\n- Use folders to group related requests and organize the collection.\n    \n- Add more [scripts](https://learning.postman.com/docs/writing-scripts/intro-to-scripts/) to verify if the API works as expected and execute workflows.\n    \n\n## 💡Related templates\n\n[API testing basics](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e9a37a28-055b-49cd-8c7e-97494a21eb54&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)  \n[API documentation](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e9c28f47-1253-44af-a2f3-20dce4da1f18&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)  \n[Authorization methods](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=31a9a6ed-4cdf-4ced-984c-d12c9aec1c27&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "45713704",
+		"_collection_link": "https://anggi-7400494.postman.co/workspace/Anggi's-Workspace~6a2abc08-37d2-4122-80fa-7f32bbb300f3/collection/45713704-80754a4b-ba74-4f7f-8bc3-c4e54ae63e17?action=share&source=collection_link&creator=45713704"
+	},
+	"item": [
+		{
+			"name": "Login",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const user = pm.response.json();",
+							"",
+							"const loginResponse = user.body.singleResult.data.login;",
+							"",
+							"pm.test(\"Has properties\", function() {",
+							"    pm.expect(loginResponse).to.have.property(\"token\");",
+							"    pm.expect(loginResponse).to.have.property(\"user\");",
+							"});",
+							"",
+							"if (pm.test(\"Has properties\")) {",
+							"    pm.globals.set(\"accessToken\", loginResponse.token);",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "graphql",
+					"graphql": {
+						"query": "query {\r\n  login(username: \"admin\", password: \"admin123\") {\r\n    token\r\n    user {\r\n      id\r\n      username\r\n      role\r\n    }\r\n  }\r\n}",
+						"variables": ""
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/graphql",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"graphql"
+					]
+				},
+				"description": "This is a GET request and it is used to \"get\" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).\n\nA successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data."
+			},
+			"response": []
+		},
+		{
+			"name": "Paginated Employee List",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "graphql",
+					"graphql": {
+						"query": "query {\r\n  listEmployeesPaginated(page: 1, limit: 10, sortBy: \"age\", sortOrder: ASC) {\r\n    data {\r\n      id\r\n      name\r\n      age\r\n      subjects\r\n      attendance {\r\n        status\r\n        date\r\n      }\r\n    }\r\n    pagination {\r\n      page\r\n      limit\r\n      total\r\n      totalPages\r\n      hasNextPage\r\n      hasPreviousPage\r\n    }\r\n  }\r\n}",
+						"variables": ""
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/graphql",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"graphql"
+					]
+				},
+				"description": "This is a GET request and it is used to \"get\" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).\n\nA successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data."
+			},
+			"response": []
+		},
+		{
+			"name": "Get Employee Details",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "graphql",
+					"graphql": {
+						"query": "query GetEmployee {\r\n\tgetEmployee(id: \"1\") {\r\n\t\tid\r\n\t\tname\r\n\t\tage\r\n\t\tclass\r\n\t\tsubjects\r\n\t\tattendance {\r\n\t\t\tdate\r\n\t\t\tstatus\r\n\t\t}\r\n\t}\r\n}",
+						"variables": ""
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/graphql",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"graphql"
+					]
+				},
+				"description": "This is a GET request and it is used to \"get\" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).\n\nA successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data."
+			},
+			"response": []
+		},
+		{
+			"name": "Add Employee",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "graphql",
+					"graphql": {
+						"query": "mutation AddNewEmployee {\r\n  addEmployee(\r\n    input: {\r\n      name: \"Camille Johnson\"\r\n      age: 23\r\n      class: \"12th\"\r\n      subjects: [\"Physics\", \"Chemistry\", \"Biology\", \"Mathematics\"]\r\n      attendance: [\r\n        { date: \"2024-01-20\", status: \"present\" }\r\n        { date: \"2024-01-21\", status: \"present\" }\r\n        { date: \"2024-01-22\", status: \"late\" }\r\n      ]\r\n    }\r\n  ) {\r\n    id\r\n    name\r\n    age\r\n    class\r\n    subjects\r\n    attendance {\r\n      date\r\n      status\r\n    }\r\n  }\r\n}",
+						"variables": ""
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/graphql",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"graphql"
+					]
+				},
+				"description": "This is a GET request and it is used to \"get\" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).\n\nA successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data."
+			},
+			"response": []
+		},
+		{
+			"name": "Update Employee",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "graphql",
+					"graphql": {
+						"query": "mutation UpdateEmployee {\r\n\tupdateEmployee(\r\n\t\tid: \"1\"\r\n\t\tinput: {\r\n\t\t\tname: \"John Doe Updated\"\r\n\t\t\tage: 26\r\n\t\t\tclass: \"10th\"\r\n\t\t\tsubjects: [\"Math\", \"Science\", \"English\", \"Computer Science\"]\r\n\t\t\tattendance: [\r\n\t\t\t\t{ date: \"2024-01-15\", status: \"present\" }\r\n\t\t\t\t{ date: \"2024-01-16\", status: \"present\" }\r\n\t\t\t\t{ date: \"2024-01-17\", status: \"present\" }\r\n\t\t\t]\r\n\t\t}\r\n\t) {\r\n\t\tid\r\n\t\tname\r\n\t\tage\r\n\t\tclass\r\n\t\tsubjects\r\n\t\tattendance {\r\n\t\t\tdate\r\n\t\t\tstatus\r\n\t\t}\r\n\t}\r\n}",
+						"variables": ""
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/graphql",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"graphql"
+					]
+				},
+				"description": "This is a GET request and it is used to \"get\" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).\n\nA successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data."
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{accessToken}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://template.postman-echo.com"
+		}
+	]
+}
